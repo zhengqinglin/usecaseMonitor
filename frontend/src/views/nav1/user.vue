@@ -48,6 +48,12 @@
 			</el-table-column>
 			</el-table>
 		</template>
+		<!--工具条-->
+		<el-col :span="24" class="toolbar">
+			<!-- <el-button type="danger" @click="batchRemove" :disabled="this.sels.length===0">批量删除</el-button> -->
+			<el-pagination layout="total,prev, pager, next" @current-change="handleCurrentChange" :page-size="10" :total="total" style="float:right;">
+			</el-pagination>
+		</el-col>
 		<el-dialog title="新增" v-model="addFormVisible" :close-on-click-modal="false">
 			<el-form :model="addForm" ref="addForm" label-width="80px" @submit.prevent="onSubmit" style="margin:20px;width:60%;min-width:600px;">
 					<el-form-item label="用例包">
@@ -97,6 +103,8 @@
 				filters: {
 					name: ''
 				},
+				total:0,
+				page: 1,
 				options:{},
 				optionsForPackage: [],
 				optionsForModule: '',
@@ -218,16 +226,27 @@
 
 				//如何获取父页面传递过来的值
 				console.log(this.$route.query.id)
-				let para = this.$route.query.id;
+				// let para = this.$route.query.id;
+				let para = {
+					id: this.$route.query.id,
+					pageNum: this.page,
+					name: this.filters.name
+				};
+				console.log(para);
 				
 				this.loading = true;
 				//NProgress.start();
 				getTestReportList(para).then((res) => {
 					console.log(res)
-					this.reports = res.data.reports;
+					this.total = res.data.total;
+					this.reports = res.data.list;
 					this.loading = false;
 					//NProgress.done();
 				});
+			},
+			handleCurrentChange(val) {
+				this.page = val;
+				this.getTestReport();
 			}
 		},
 		mounted() {

@@ -1,11 +1,14 @@
 package com.ruijie.web;
 
 import com.alibaba.fastjson.JSONObject;
+import com.github.pagehelper.PageHelper;
+import com.github.pagehelper.PageInfo;
 import com.ruijie.annotation.RestWrapper;
 import com.ruijie.exception.ServiceException;
 import com.ruijie.model.Project;
 import com.ruijie.service.ProjectService;
 import com.ruijie.service.SvnProjectService;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,7 +24,7 @@ import java.util.UUID;
  * 项目的增删改查
  */
 @RestController
-@RequestMapping(value = "/api")
+//@RequestMapping(value = "/api")
 public class ProjectController {
 
     /**
@@ -42,17 +45,19 @@ public class ProjectController {
      * @return
      */
     @GetMapping(value = "/project")
-    public String getProjectList() {
-        JSONObject result = new JSONObject();
-//        List<Project> list = projectService.find();
+    public PageInfo<Project> getProjectList(@RequestParam(value = "pageNum", required = false) Integer pageNum,@RequestParam(value = "name",required = false) String projectName) {
+        if (null == pageNum || pageNum < 0) {
+            pageNum = 1;
+        }
+        PageHelper.startPage(pageNum,10);
         Example example = new Example(Project.class);
         example.setOrderByClause("create_time desc");
+        if (StringUtils.isNotBlank(projectName)) {
+            example.createCriteria().andLike("name",projectName);
+        }
         List<Project> list = projectService.findByExample(example);
-        //list为空 todo
-        result.put("total",list.size());
-        result.put("projectList",list);
-        LOG.debug("{}",result.toJSONString());
-        return result.toJSONString();
+        PageInfo<Project> result = new PageInfo<>(list);
+        return result;
     }
 
     /**

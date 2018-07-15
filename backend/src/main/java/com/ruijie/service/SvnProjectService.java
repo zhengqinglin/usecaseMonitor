@@ -110,12 +110,11 @@ public class SvnProjectService {
             return false;
         }
 
-        // 注册一个更新事件处理器
+        // 注册一个更新事件处理器 todo
 //        clientManager.getCommitClient().setEventHandler(new UpdateEventHandler());
 
         SVNURL repositoryURL;
         try {
-            // eg: http://svn.ambow.com/wlpt/bsp
             repositoryURL = SVNURL.parseURIEncoded(project.getSvnUrl());
         } catch (SVNException e) {
             LOG.error("解析SVN路径{}出现异常",project.getSvnUrl(),e);
@@ -127,6 +126,7 @@ public class SvnProjectService {
         if(!SVNWCUtil.isVersionedDirectory(ws)){
             SVNUtils.checkout(clientManager, repositoryURL, SVNRevision.HEAD, new File(workspace), SVNDepth.INFINITY);
         }else{
+            //能否保证文件一致性 todo
             SVNUtils.update(clientManager, ws, SVNRevision.HEAD, SVNDepth.INFINITY);
         }
         return true;

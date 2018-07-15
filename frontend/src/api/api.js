@@ -9,7 +9,7 @@ export const requestLogin = params => { return axios.post(`/login`, params).then
 //1. 添加测试报告
 export const addTestReport = params => { return axios.post(`${base}/testReport`, params); };
 //2. 获取测试报告列表
-export const getTestReportList = params => { return axios.get(`${base}/testReport/list/`+params+"");}
+export const getTestReportList = params => { return axios.get(`${base}/testReport/list/`+params.id,{ params: params });}
 //3. 查询指定报告
 export const getTestReport = params => { return axios.get(`${base}/testReport/`+params);}
 //4. 删除指定报告
