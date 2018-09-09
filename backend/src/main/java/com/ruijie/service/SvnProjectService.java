@@ -68,27 +68,32 @@ public class SvnProjectService {
      * 			Project
      * @return
      */
-    public boolean createProject(Project project) {
-        if(project == null){
-            return false;
-        }
+    public String createProject(Project project) {
         // project work copy
         File ws = new File(workspace);
-        if(!ws.exists()){
-            ws.mkdirs();
+        if(!ws.exists() && !ws.mkdirs()){
+            LOG.error("创建工作空间{}失败",workspace);
+            throw new ServiceException("服务器内部异常，请联系管理员");
         }
-        File dest = new File(workspace + File.separator + project.getName());
-        if(!dest.exists()){
-            dest.mkdirs();
+        //存储结构：从workspace/{projectName}更改为workspace/{projectId}
+        File dest = new File(workspace,project.getId());
+        if(!dest.exists() && !dest.mkdirs()){
+            LOG.error("创建项目目录{}失败",dest.getAbsolutePath());
+            throw new ServiceException("服务器内部异常，请联系管理员");
         }
-        // 确定工作空间
-        checkWorkCopy(project);
+        // 检出文件到工作空间
+        checkoutWorkCopy(project.getSvnUrl(),dest);
 
-        return true;
+        return dest.getAbsolutePath();
     }
 
-    public String getWorkCopy(Project project) {
-        File ws = new File(new File(workspace), project.getName());
+    /**
+     * 根据项目ID获取工作目录
+     * @param projectId
+     * @return
+     */
+    public String getWorkCopy(String projectId) {
+        File ws = new File(new File(workspace), projectId);
         return ws.getAbsolutePath();
     }
 
@@ -121,10 +126,10 @@ public class SvnProjectService {
             return false;
         }
 
-        File ws = new File(new File(workspace), project.getName());
+        File ws = new File(new File(workspace), project.getId());
 
         if(!SVNWCUtil.isVersionedDirectory(ws)){
-            SVNUtils.checkout(clientManager, repositoryURL, SVNRevision.HEAD, new File(workspace), SVNDepth.INFINITY);
+            SVNUtils.checkout(clientManager, repositoryURL, SVNRevision.HEAD, ws, SVNDepth.INFINITY);
         }else{
             //能否保证文件一致性 todo
             SVNUtils.update(clientManager, ws, SVNRevision.HEAD, SVNDepth.INFINITY);
@@ -145,7 +150,7 @@ public class SvnProjectService {
 
         File wc_project = new File( workspace + "/" + project.getName());
 
-        checkVersiondDirectory(clientManager,wc_project);
+        checkVersionedDirectory(clientManager,wc_project);
 
         SVNUtils.commit(clientManager, wc_project, false, "svnkit");
 
@@ -157,7 +162,7 @@ public class SvnProjectService {
      * @param clientManager
      * @param wc
      */
-    private void checkVersiondDirectory(SVNClientManager clientManager,File wc){
+    private void checkVersionedDirectory(SVNClientManager clientManager,File wc){
         if(!SVNWCUtil.isVersionedDirectory(wc)){
             SVNUtils.addEntry(clientManager, wc);
         }
@@ -166,42 +171,53 @@ public class SvnProjectService {
                 if(sub.isDirectory() && sub.getName().equals(".svn")){
                     continue;
                 }
-                checkVersiondDirectory(clientManager,sub);
+                checkVersionedDirectory(clientManager,sub);
             }
         }
     }
 
-    private void checkWorkCopy(Project project){
-
-        SVNClientManager clientManager = SVNUtils.authSvn(project.getSvnUrl(), userName, password);
-
+    /**
+     * 检出文件到指定目录
+     * @param svnUrl
+     * @param dir
+     */
+    private void checkoutWorkCopy(String svnUrl, File dir){
+        LOG.info("当前操作目录:{}",dir.getAbsolutePath());
+        SVNClientManager clientManager = SVNUtils.authSvn(svnUrl, userName, password);
+        if (null == clientManager) {
+            LOG.error("获取svn客户端连接失败");
+            throw new ServiceException("内部服务器错误，请联系管理员");
+        }
         SVNURL repositoryURL = null;
         try {
-            // http://svn.ruijie.net/svn/RCD/Version/文档归档/项目文档/2018云课堂项目归档/RCC_V3.5.X/RCC_V3.5_R1/开发阶段/内部测试/第二轮测试/测试用例
-            repositoryURL = SVNURL.parseURIEncoded(project.getSvnUrl());
+            repositoryURL = SVNURL.parseURIEncoded(svnUrl);
         } catch (SVNException e) {
-            LOG.error("解析SVN路径{}出现异常",project.getSvnUrl(),e);
+            LOG.error("解析SVN路径{}出现异常",svnUrl,e);
+            throw new ServiceException("内部服务器错误，请联系管理员");
         }
-
-//        File wc = new File(workspace);
-        File wc_project = new File( workspace + "/" + project.getName());
         try {
-
-            if(!SVNUtils.isWorkingCopy(wc_project)){
+            if(!SVNUtils.isWorkingCopy(dir)){
                 if(!SVNUtils.isURLExist(repositoryURL,userName,password)){
-                    SVNUtils.checkout(clientManager, repositoryURL, SVNRevision.HEAD, wc_project, SVNDepth.EMPTY);
+                    SVNUtils.checkout(clientManager, repositoryURL, SVNRevision.HEAD, dir, SVNDepth.EMPTY);
                 }else{
-                    SVNUtils.checkout(clientManager, repositoryURL, SVNRevision.HEAD, wc_project, SVNDepth.INFINITY);
+                    SVNUtils.checkout(clientManager, repositoryURL, SVNRevision.HEAD, dir, SVNDepth.INFINITY);
                 }
             }else{
-                SVNUtils.update(clientManager, wc_project, SVNRevision.HEAD, SVNDepth.INFINITY);
+                SVNUtils.update(clientManager, dir, SVNRevision.HEAD, SVNDepth.INFINITY);
             }
         } catch (SVNException e) {
-            LOG.error("异常",e);
+            LOG.error("从{}检出文件或者更新文件到目录{}出现异常",svnUrl,dir,e);
+            throw new ServiceException("内部服务器错误，请联系管理员");
         }
     }
 
-    //判断指定路径是否存在，以及访问性
+    /**
+     * 判断路径是否可达：
+     * 1.是否存在
+     * 2.是否有权限访问
+     * @param svnUrl
+     * @return
+     */
     public boolean validSvnUrl(String svnUrl) {
         if (StringUtils.isBlank(svnUrl)) {
             throw new ServiceException("svn地址不能为空");
@@ -213,7 +229,7 @@ public class SvnProjectService {
             LOG.error("解析{}出现异常",svnUrl,e);
             throw new ServiceException("svn地址不正确");
         }
-        boolean result = false;
+        boolean result;
         try {
             result = SVNUtils.isURLExist(repositoryURL,userName,password);
         }catch (SVNException e){
@@ -222,8 +238,5 @@ public class SvnProjectService {
         }
         return result;
     }
-
-
-
 
 }

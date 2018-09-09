@@ -28,11 +28,11 @@
 		</rollingPolicy>
 	</appender>
 
-	<logger name="com.ruijie" level="DEBUG" />
+	<logger name="com.ruijie" level="INFO" />
 	<logger name="org.springframework" level="INFO" />
 
 	<!-- 默认logger -->
-	<root level="debug">
+	<root level="INFO">
 		<appender-ref ref="CONSOLE" />
 		<appender-ref ref="ROLLING-FILE" />
 	</root>

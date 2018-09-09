@@ -51,6 +51,10 @@ public class Project implements Serializable {
      */
     private Date createTime;
 
+    /**
+     * 工作拷贝路径
+     */
+    private String workingCopyPath;
 
     public String getId() {
         return id;
@@ -106,5 +110,13 @@ public class Project implements Serializable {
 
     public void setCreateTime(Date createTime) {
         this.createTime = createTime;
+    }
+
+    public String getWorkingCopyPath() {
+        return workingCopyPath;
+    }
+
+    public void setWorkingCopyPath(String workingCopyPath) {
+        this.workingCopyPath = workingCopyPath;
     }
 }

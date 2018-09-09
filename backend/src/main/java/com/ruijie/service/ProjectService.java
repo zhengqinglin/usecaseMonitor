@@ -23,13 +23,19 @@ public class ProjectService extends BaseDaoService<Project> {
     /**
      *  根据id获取workcopy
      */
-    public String getWorkCopyFilesPath(String projectId) {
+    public boolean updateProject(String projectId) {
         Project project = super.findOne(projectId);
         //更新文件
-        svnProjectService.updateProjectFromSvn(project);
-        //获取文件目录
-        return svnProjectService.getWorkCopy(project);
+        return svnProjectService.updateProjectFromSvn(project);
     }
+
+    /**
+     *  根据id获取workcopy
+     */
+    public String getWorkCopyPath(String projectId) {
+        return svnProjectService.getWorkCopy(projectId);
+    }
+
 
     //将项目相关的操作放到这里 todo
 }

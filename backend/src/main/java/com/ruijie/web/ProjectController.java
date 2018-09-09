@@ -1,6 +1,5 @@
 package com.ruijie.web;
 
-import com.alibaba.fastjson.JSONObject;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import com.ruijie.annotation.RestWrapper;
@@ -15,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import tk.mybatis.mapper.entity.Example;
 
+import java.io.File;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
@@ -24,7 +24,7 @@ import java.util.UUID;
  * 项目的增删改查
  */
 @RestController
-//@RequestMapping(value = "/api")
+@RequestMapping(value = "/api")
 public class ProjectController {
 
     /**
@@ -72,11 +72,10 @@ public class ProjectController {
         }
         project.setId(UUID.randomUUID().toString().replace("-",""));
         project.setCreateTime(new Date());
+        String workingCopyPath = svnProjectService.createProject(project);
+        project.setWorkingCopyPath(workingCopyPath);
         projectService.save(project);
-        //拉取项目文件
-        if (!svnProjectService.createProject(project)) {
-            throw new ServiceException("创建项目失败，请尝试重试或者联系管理员");
-        }
+        //返回值待定 todo
     }
 
     /**
@@ -84,10 +83,18 @@ public class ProjectController {
      */
     @DeleteMapping(value = "/project/{id}")
     public String delProject(@PathVariable("id") String id) {
+        Project project = projectService.findOne(id);
+        if (null == project) {
+            return null;
+        }
+        LOG.error("workingCopyPath:{}",project.getWorkingCopyPath());
+        if (new File(project.getWorkingCopyPath()).delete()){
+            LOG.error("删除文件{}成功",project.getWorkingCopyPath());
+        }
         projectService.deleteById(id);
-        //删除项目文件
-
+//        new File(project.getWorkingCopyPath()).delete()
         return null;
+        //返回值待定 todo
     }
 
     /**
@@ -100,6 +107,19 @@ public class ProjectController {
         projectService.updateByIdSelective(project);
         //svnUrl是否允许修改
         return null;
+        //返回值待定 todo
+    }
+
+    public static void main(String[] args) {
+//        System.out.println(new File("C:\\opt\\svn\\workspace","测试").getAbsolutePath());
+//        if (new File("C:\\opt\\svn\\workspace\\测试").delete()){
+//            System.out.println("success");
+//        }
+        File dest = new File("C:\\opt\\svn\\workspace" + File.separator + "测试");
+        if(!dest.exists() && !dest.mkdirs()){
+            LOG.error("创建项目目录{}失败",dest.getAbsolutePath());
+            throw new ServiceException("服务器内部异常，请联系管理员");
+        }
     }
 
 }
